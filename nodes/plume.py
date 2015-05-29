@@ -7,15 +7,18 @@ import time
 # Various parameters of the simulation
 
 # Wind
-MAX_ANGLE = np.pi / 16. # radians
+MAX_ANGLE = np.pi / 20. # radians
 MAX_ANGLE_CHANGE = MAX_ANGLE / 10.
 WIND_FACTOR = 20 # how many timesteps to change the wind
+MAX_SPEED_CHANGE = .1 # m/s
+MAX_SPEED = 1.1
+MIN_SPEED = .7
 
 # Particles
 PARTICLE_SIZE = 0.5 # meters
 MAX_PARTICLES = 50 # stop spawning after get to this many
 PARTICLE_LIFETIME = 10 # seconds after which to delete particle
-WAIT_BEFORE_PARTICLE = 0.4 # seconds
+WAIT_BEFORE_PARTICLE = .85 # seconds
 
 # Simulation
 DELTA_T = 0.01 # seconds
@@ -28,13 +31,14 @@ START_Y = 15 # meters
 # methods for dealing with them.
 class Odour_Plume:
     def __init__(self):
-        self.wind_r = 0.5 # m/s
+        self.wind_r = 0.8 # m/s
         self.wind_t = 0   # rad
         self.particles = [] # List of particles comprising the plume
         self.x = START_X
         self.y = START_Y
 
     def change_wind(self):
+        # angle change
         delta = random.random() * MAX_ANGLE_CHANGE
         if(self.wind_t + delta > MAX_ANGLE):
             self.wind_t = self.wind_t - delta
@@ -42,6 +46,13 @@ class Odour_Plume:
             self.wind_t = self.wind_t + delta
         else:
             self.wind_t = self.wind_t + cmp(random.random() - 0.5, 0.)
+        
+        # speed change
+        delta_s = random.random() * MAX_SPEED_CHANGE
+        sign_r = random.choice([-1.0, 1.0])
+        if(self.wind_r + delta_s*sign_r < MAX_SPEED) and (self.wind_r + delta_s*sign_r > MIN_SPEED):
+            self.wind_r = self.wind_r + delta_s*sign_r           
+        
         # Inform the child particles
         for particle in self.particles:
             particle.update_speed(self.wind_r, self.wind_t)
@@ -115,7 +126,15 @@ while(1):
     cv2.waitKey(1)
     i = 0
     while i < WAIT_BEFORE_PARTICLE / DELTA_T:
+        img = np.ones((700,600,3), np.uint8) * 255
         plume.update()
+        plume.draw(img)
+        cv2.circle(img, (START_X * SIZE_FACTOR,  START_Y * SIZE_FACTOR), 
+                DISTRIBUTION_DISTANCE * SIZE_FACTOR, (0, 0, 255), 3)
+        cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+        cv2.imshow('image', img)
+        #cv2.waitKey((int)(1000 * WAIT_BEFORE_PARTICLE))
+        cv2.waitKey(1)
         if i % WIND_FACTOR == 0:
             plume.change_wind()
         time.sleep(DELTA_T)
